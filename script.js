@@ -803,12 +803,17 @@ function createPolaroid(imgSrc, textContent, imgWidth, imgHeight) {
     // Let's try keeping it behind the camera initially.
     
     if(cameraContainer) {
-        const cameraZ = parseInt(cameraContainer.style.zIndex || 100);
-        div.style.zIndex = cameraZ - 1;
+        // 确保相机在最上层，照片在相机下一层，但都在其他元素之上
+        globalZIndex += 2;
+        cameraContainer.style.zIndex = globalZIndex;
+        div.style.zIndex = globalZIndex - 1;
     } else {
         globalZIndex++;
         div.style.zIndex = globalZIndex;
     }
+
+    // 动画期间禁止交互
+    div.style.pointerEvents = 'none';
 
     div.innerHTML = `
         <div class="delete-btn" title="删除">✕</div>
@@ -853,7 +858,7 @@ function createPolaroid(imgSrc, textContent, imgWidth, imgHeight) {
                   fill="url(#vig-${uid})" clip-path="url(#clip-${uid})" style="mix-blend-mode: multiply; pointer-events: none;"/>
 
             <rect class="dev-overlay" x="${framePaddingX}" y="${framePaddingYTop}" width="${imageSvgWidth}" height="${imageSvgHeight}" fill="#050505" />
-            <text x="${frameSvgWidth / 2}" y="${textSvgY}" text-anchor="middle" dominant-baseline="middle" font-family="'Caveat', cursive" font-size="36" fill="${config.text}">${textContent}</text>
+            <text x="${frameSvgWidth / 2}" y="${textSvgY}" text-anchor="middle" dominant-baseline="middle" font-family="'Caveat', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimHei', 'Heiti SC', 'WenQuanYi Micro Hei', sans-serif" font-weight="400" font-size="36" fill="${config.text}">${textContent}</text>
         </svg>
     `;
 
@@ -875,6 +880,9 @@ function createPolaroid(imgSrc, textContent, imgWidth, imgHeight) {
     anim.onfinish = () => {
         div.classList.add('developed');
         div.classList.remove('ejecting');
+        
+        // 恢复交互
+        div.style.pointerEvents = 'auto';
         
         // Set final position
         div.style.top = `${startTop + dropDistance}px`;

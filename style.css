@@ -139,7 +139,8 @@ input[type="text"] {
     border: none;
     border-bottom: 2px solid transparent;
     color: #333;
-    font-family: 'Caveat', cursive;
+    font-family: 'Caveat', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimHei', 'Heiti SC', 'WenQuanYi Micro Hei', sans-serif;
+    font-weight: 400;
     font-size: 28px;
     width: 240px;
     text-align: center;
