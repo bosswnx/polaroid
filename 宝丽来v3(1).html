@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polaroid Final Fixed</title>
+    <!-- 样式库 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- 引入 html2canvas 用于屏幕截图 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --grid-color: #cbd5e1;
+            --accent-color: #ff4757;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.8);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden; 
+            user-select: none;
+        }
+
+        .toolbar {
+            position: fixed;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            padding: 15px 40px;
+            border-radius: 60px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            z-index: 2000;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        
+        .icon-btn {
+            background: none;
+            border: none;
+            color: #444;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.2s;
+        }
+        .icon-btn:hover { color: #000; transform: scale(1.1); }
+        .icon-btn span { font-size: 16px; font-weight: 500; }
+
+        .divider { width: 1px; height: 24px; background: #bbb; }
+
+        /* 自定义下拉菜单样式 */
+        .custom-select-container {
+            position: relative;
+            width: 110px;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            margin-right: 10px;
+        }
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 10px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #444;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .custom-select-trigger:hover { color: #000; }
+        .custom-select-trigger i { font-size: 12px; margin-left: 8px; color: #666; }
+
+        .custom-options {
+            position: absolute;
+            top: 140%;
+            left: 50%;
+            transform: translateX(-50%) scaleY(0);
+            transform-origin: top;
+            width: 140px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid #fff;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            padding: 6px;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 3000;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .custom-options.open {
+            transform: translateX(-50%) scaleY(1);
+            opacity: 1;
+            visibility: visible;
+        }
+        .custom-option {
+            padding: 10px 12px;
+            font-size: 15px;
+            color: #333;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .custom-option:hover { background: #f0f2f5; }
+        .custom-option.selected { background: #e6f7ff; color: #000; font-weight: 600; }
+
+        /* 滚动条样式 */
+        .custom-options::-webkit-scrollbar { width: 4px; }
+        .custom-options::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+        .style-preview {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            overflow: hidden;
+            margin-left: -10px; /* Adjust spacing */
+            margin-right: 10px;
+            background: #fff;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .style-preview:hover { transform: scale(1.2); }
+
+        input[type="text"] {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: #333;
+            font-family: 'Caveat', cursive;
+            font-size: 28px;
+            width: 240px;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus { border-bottom-color: var(--accent-color); }
+
+        #workspace {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            padding-top: 220px;
+        }
+
+        .camera-container {
+            position: relative;
+            z-index: 1000;
+            filter: drop-shadow(0 30px 50px rgba(0,0,0,0.2));
+            pointer-events: none; 
+        }
+        .camera-container svg { pointer-events: auto; }
+
+        /* 照片 */
+        .polaroid-item {
+            position: absolute;
+            width: 330px;
+            height: 495px;
+            top: 410px; 
+            left: 50%;
+            margin-left: -165px; 
+            transform-origin: center top;
+            cursor: grab;
+            transition: box-shadow 0.3s;
+            will-change: transform, top;
+            z-index: 500; 
+        }
+
+        .polaroid-item:active {
+            cursor: grabbing;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.3) !important;
+            z-index: 1500 !important;
+        }
+
+        /* 吐片动画 */
+        .polaroid-item.ejecting {
+            animation: natural-eject 1.4s ease-out forwards;
+        }
+
+        @keyframes natural-eject {
+            0% { 
+                top: 420px; 
+                transform: scale(0.85) rotate(0deg);
+                opacity: 0;
+            }
+            20% {
+                opacity: 1;
+                top: 450px; 
+                transform: scale(0.9) rotate(0deg);
+            }
+            60% {
+                top: 620px; 
+                transform: scale(1) rotate(0deg); 
+            }
+            100% { 
+                top: 640px; 
+                transform: scale(1) rotate(var(--random-rotate)); 
+            }
+        }
+
+        .dev-overlay {
+            transition: opacity 8s ease-in-out;
+            opacity: 1;
+        }
+        .polaroid-item.developed .dev-overlay { opacity: 0; }
+        
+        .delete-btn {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 30px;
+            height: 30px;
+            background: #ff4757;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0;
+            transition: 0.2s;
+            pointer-events: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        .delete-btn:hover { transform: scale(1.1); }
+        .polaroid-item:hover .delete-btn { opacity: 1; }
+
+        body.capturing .toolbar,
+        body.capturing .delete-btn,
+        body.capturing .tip {
+            display: none !important;
+        }
+
+        .flash {
+            position: fixed;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transition: opacity 0.05s;
+        }
+        .flash.fire { opacity: 0.8; }
+
+        @keyframes pulse {
+            0% { filter: drop-shadow(0 0 0 rgba(255, 71, 87, 0)); }
+            50% { filter: drop-shadow(0 0 12px rgba(255, 71, 87, 0.6)); }
+            100% { filter: drop-shadow(0 0 0 rgba(255, 71, 87, 0)); }
+        }
+        .shutter-ready { animation: pulse 2s infinite; cursor: pointer; }
+
+        /* 缩略图栏样式 */
+        .thumbnail-bar {
+            position: fixed;
+            top: 140px; /* Toolbar is around top:40px + height */
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            z-index: 1800;
+            max-width: 80vw;
+            overflow-x: auto;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            scrollbar-width: none; /* Firefox */
+        }
+        .thumbnail-bar.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .thumbnail-bar::-webkit-scrollbar { display: none; }
+
+        .thumb-wrapper {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .thumb-wrapper:hover { transform: scale(1.1); }
+        
+        .thumb-item {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+            display: block;
+            background: #ddd;
+        }
+
+        .thumb-wrapper.selected .thumb-item {
+            border-color: var(--accent-color);
+        }
+
+        .check-indicator {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            opacity: 0;
+            transform: scale(0);
+            transition: 0.2s;
+            border: 2px solid #fff;
+        }
+        .thumb-wrapper.selected .check-indicator {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .tip {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #94a3b8;
+            font-size: 15px;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        /* Camera Modal Styles */
+        .camera-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 90vw;
+            width: 640px;
+        }
+
+        .modal-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #333;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .close-modal-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #666;
+            cursor: pointer;
+            padding: 0 10px;
+            transition: color 0.2s;
+        }
+        .close-modal-btn:hover { color: #000; }
+
+        .video-wrapper {
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #webcam-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror effect */
+        }
+
+        .capture-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid #ddd;
+            background: transparent;
+            padding: 4px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .capture-btn:active { transform: scale(0.95); }
+        
+        .capture-inner {
+            width: 100%;
+            height: 100%;
+            background: #ff4757;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+        .capture-btn:hover .capture-inner { background: #ff6b81; }
+    </style>
+</head>
+<body>
+
+    <div class="flash" id="flash"></div>
+
+    <div class="toolbar" id="toolbar">
+        <button class="icon-btn" onclick="document.getElementById('file-input').click()">
+            <i class="fas fa-images"></i>
+            <span id="upload-status">添加照片</span>
+        </button>
+        <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
+        
+        <!-- 隐藏原生 Select -->
+        <select id="style-select" style="display: none;">
+            <option value="white">经典白</option>
+            <option value="dots">可爱波点</option>
+            <option value="grid">简约方格</option>
+            <option value="flowers">复古碎花</option>
+            <option value="gradient">落日渐变</option>
+            <option value="black">酷黑</option>
+            <option value="kraft">复古牛皮</option>
+            <option value="hearts">爱心发射</option>
+            <option value="stars">梦幻星空</option>
+        </select>
+
+        <!-- 自定义下拉菜单容器 -->
+        <div class="custom-select-container" id="custom-select">
+            <div class="custom-select-trigger">
+                <span id="current-style-text">经典白</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="custom-options" id="custom-options">
+                <!-- 选项由 JS 生成 -->
+            </div>
+        </div>
+        
+        <div id="style-preview" class="style-preview"></div>
+
+        <div class="divider"></div>
+        <input type="text" id="text-input" placeholder="输入文字..." maxlength="12" autocomplete="off">
+
+        <div class="divider"></div>
+        <button class="icon-btn" id="save-desk-btn" title="保存整个桌面截图">
+            <i class="fas fa-camera"></i>
+            <span>保存桌面</span>
+        </button>
+    </div>
+
+    <div id="workspace">
+        <!-- Camera Modal -->
+        <div id="camera-modal" class="camera-modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span>拍摄照片</span>
+                    <button class="close-modal-btn" id="close-modal-btn">&times;</button>
+                </div>
+                <div class="video-wrapper">
+                    <video id="webcam-feed" autoplay playsinline></video>
+                </div>
+                <button id="capture-btn" class="capture-btn">
+                    <div class="capture-inner"></div>
+                </button>
+            </div>
+        </div>
+        
+        <canvas id="snapshot-canvas" style="display:none;"></canvas>
+        <div class="camera-container">
+            <svg width="500" height="375" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="40" width="300" height="200" rx="24" fill="#f2f2f2"/>
+                <rect x="10" y="40" width="300" height="190" rx="24" fill="#fff"/>
+                <rect x="10" y="220" width="300" height="20" rx="10" fill="#e0e0e0" style="mix-blend-mode: multiply;"/>
+                <rect x="135" y="40" width="10" height="200" fill="#FF9F43"/>
+                <rect x="145" y="40" width="10" height="200" fill="#EE5253"/>
+                <rect x="155" y="40" width="10" height="200" fill="#0ABDE3"/>
+                <g id="camera-lens" style="cursor: pointer">
+                    <circle cx="160" cy="130" r="75" fill="#e5e5e5" stroke="#ddd"/>
+                    <circle cx="160" cy="130" r="60" fill="#2d3436"/>
+                    <circle cx="160" cy="130" r="50" fill="#000"/>
+                    <circle cx="160" cy="130" r="20" fill="#2d3436" stroke="#444" stroke-width="2"/>
+                    <circle cx="150" cy="120" r="6" fill="white" opacity="0.3"/>
+                </g>
+                <rect x="230" y="65" width="60" height="40" rx="4" fill="#636e72"/>
+                <rect x="234" y="69" width="52" height="32" rx="2" fill="#dfe6e9" opacity="0.9"/>
+                <rect x="30" y="65" width="60" height="40" rx="4" fill="#2d3436"/>
+                <rect x="35" y="70" width="50" height="30" rx="2" fill="#000"/>
+                <g id="shutter-btn" class="shutter-btn" style="opacity: 0.6; cursor: not-allowed;">
+                    <circle cx="270" cy="160" r="24" fill="#c0392b"/>
+                    <circle cx="270" cy="160" r="20" fill="#ff4757" />
+                    <circle cx="270" cy="160" r="35" fill="transparent"/>
+                </g>
+                <rect x="35" y="228" width="250" height="12" rx="2" fill="#2d3436"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="tip">双击照片下载 · 自由拖拽整理 · 点击“保存桌面”导出全图</div>
+
+    <!-- 缩略图栏 -->
+    <div id="thumbnail-bar" class="thumbnail-bar"></div>
+
+    <script>
+        let currentImageBase64 = null;
+        let currentImageDimensions = { width: 0, height: 0 }; // Added for dynamic sizing
+        let isReady = false;
+        
+        const workspace = document.getElementById('workspace');
+        const shutterBtn = document.getElementById('shutter-btn');
+        const fileInput = document.getElementById('file-input');
+        const textInput = document.getElementById('text-input');
+        const uploadStatus = document.getElementById('upload-status');
+        const toolbar = document.getElementById('toolbar');
+        const flash = document.getElementById('flash');
+        const saveDeskBtn = document.getElementById('save-desk-btn');
+        const thumbnailBar = document.getElementById('thumbnail-bar');
+
+        // 图片队列管理
+        let imageQueue = []; 
+        let selectedImages = new Set(); // Store selected imgData objects
+
+        fileInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            if(files.length === 0) return;
+            
+            const loadedImages = [];
+            
+            // Promisify reading
+            const readPromises = files.map(file => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        const base64 = evt.target.result;
+                        const img = new Image();
+                        img.onload = () => {
+                            resolve({
+                                base64: base64,
+                                width: img.naturalWidth,
+                                height: img.naturalHeight,
+                                id: Date.now() + Math.random() // Unique ID for Set matching
+                            });
+                        };
+                        img.src = base64;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            loadedImages.push(...(await Promise.all(readPromises)));
+
+            // Add all to thumbnails
+            loadedImages.forEach(imgData => {
+                imageQueue.push(imgData);
+                createThumbnail(imgData);
+            });
+            thumbnailBar.classList.add('visible');
+            
+            // 重置 input 允许重复选择相同文件
+            fileInput.value = '';
+        });
+
+        function createThumbnail(imgData) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'thumb-wrapper selected'; // Default select new ones
+            selectedImages.add(imgData); // Add to selection set
+            updateShutterState();
+
+            const img = document.createElement('img');
+            img.src = imgData.base64;
+            img.className = 'thumb-item';
+            
+            const check = document.createElement('div');
+            check.className = 'check-indicator';
+            check.innerHTML = '<i class="fas fa-check"></i>';
+
+            wrapper.appendChild(img);
+            wrapper.appendChild(check);
+
+            wrapper.onclick = () => toggleSelection(imgData, wrapper);
+            
+            thumbnailBar.appendChild(wrapper);
+            return wrapper;
+        }
+
+        function toggleSelection(imgData, wrapperEl) {
+            if (selectedImages.has(imgData)) {
+                selectedImages.delete(imgData);
+                wrapperEl.classList.remove('selected');
+            } else {
+                selectedImages.add(imgData);
+                wrapperEl.classList.add('selected');
+            }
+            updateShutterState();
+        }
+
+        function updateShutterState() {
+            if (isWebcamOn || selectedImages.size > 0) {
+                shutterBtn.style.opacity = '1';
+                shutterBtn.style.cursor = 'pointer';
+                shutterBtn.classList.add('shutter-ready');
+                
+                if (selectedImages.size > 0 && !isWebcamOn) {
+                    // Update current preview to the last selected one
+                    const lastSelected = Array.from(selectedImages).pop();
+                    if(lastSelected) {
+                        currentImageBase64 = lastSelected.base64;
+                        currentImageDimensions = { width: lastSelected.width, height: lastSelected.height };
+                        isReady = true; 
+                    }
+                }
+            } else {
+                shutterBtn.style.opacity = '0.6';
+                shutterBtn.style.cursor = 'not-allowed';
+                shutterBtn.classList.remove('shutter-ready');
+                isReady = false;
+            }
+        }
+
+        async function printBatch(images) {
+            // Disable interactions during printing?
+            for (const imgData of images) {
+                // Trigger flash and create
+                flash.classList.add('fire');
+                setTimeout(() => flash.classList.remove('fire'), 100);
+                createPolaroid(imgData.base64, textInput.value, imgData.width, imgData.height);
+                
+                // Wait for animation (eject animation is 1.4s)
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
+        
+        // --- Webcam / Camera Logic ---
+        const videoElement = document.getElementById('webcam-feed');
+        const canvasElement = document.getElementById('snapshot-canvas');
+        const canvasContext = canvasElement.getContext('2d');
+        const cameraModal = document.getElementById('camera-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        
+        let cameraStream = null;
+        let isWebcamOn = false;
+
+        async function toggleWebcam() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("无法访问摄像头：浏览器不支持或未在安全环境(HTTPS/localhost)下运行。");
+                return;
+            }
+
+            if (isWebcamOn) {
+                closeWebcam();
+            } else {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
+                    videoElement.srcObject = stream;
+                    videoElement.play();
+                    cameraModal.style.display = 'flex'; // Show modal
+                    cameraStream = stream;
+                    isWebcamOn = true;
+                    console.log("Webcam started successfully.");
+                } catch (err) {
+                    console.error("Error accessing webcam: ", err);
+                    alert("无法访问摄像头，请检查权限设置。错误信息：" + err.message); // More detailed error
+                    isWebcamOn = false;
+                    console.log("Webcam failed to start.");
+                }
+            }
+        }
+
+        function closeWebcam() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+            cameraModal.style.display = 'none';
+            isWebcamOn = false;
+        }
+
+        function takeSnapshot() {
+            if (!isWebcamOn || !videoElement.srcObject) {
+                console.warn("Webcam is not active or video stream not available.");
+                return;
+            }
+
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            
+            // Draw horizontally flipped if mirrored in CSS
+            canvasContext.save();
+            canvasContext.scale(-1, 1);
+            canvasContext.drawImage(videoElement, -canvasElement.width, 0, canvasElement.width, canvasElement.height);
+            canvasContext.restore();
+
+            const capturedBase64 = canvasElement.toDataURL('image/png');
+            
+            // Create image data object
+            const imgData = {
+                base64: capturedBase64,
+                width: videoElement.videoWidth,
+                height: videoElement.videoHeight,
+                id: Date.now() + Math.random()
+            };
+
+            // Add to queue and create thumbnail
+            imageQueue.push(imgData);
+            const newThumbWrapper = createThumbnail(imgData); 
+            thumbnailBar.classList.add('visible');
+            
+            // Visual feedback (Flash + Button)
+            flash.classList.add('fire');
+            setTimeout(() => flash.classList.remove('fire'), 150);
+
+            const inner = captureBtn.querySelector('.capture-inner');
+            inner.style.background = '#333';
+            setTimeout(() => inner.style.background = '#ff4757', 100);
+
+            // Fly animation
+            animateFlyToThumb(capturedBase64, newThumbWrapper);
+        }
+
+        function animateFlyToThumb(imgSrc, targetEl) {
+            const flyer = document.createElement('img');
+            flyer.src = imgSrc;
+            flyer.style.position = 'fixed';
+            flyer.style.zIndex = '4000';
+            flyer.style.transition = 'all 0.8s cubic-bezier(0.2, 1, 0.3, 1)'; // Smooth ease-out
+            flyer.style.borderRadius = '12px';
+            flyer.style.pointerEvents = 'none';
+            flyer.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+            
+            // Start position (Video element)
+            const videoRect = videoElement.getBoundingClientRect();
+            flyer.style.top = `${videoRect.top}px`;
+            flyer.style.left = `${videoRect.left}px`;
+            flyer.style.width = `${videoRect.width}px`;
+            flyer.style.height = `${videoRect.height}px`;
+            flyer.style.opacity = '1';
+
+            document.body.appendChild(flyer);
+
+            // Force reflow
+            flyer.getBoundingClientRect();
+
+            // Target position
+            const targetRect = targetEl.getBoundingClientRect();
+            
+            // Apply transform
+            flyer.style.top = `${targetRect.top}px`;
+            flyer.style.left = `${targetRect.left}px`;
+            flyer.style.width = `${targetRect.width}px`;
+            flyer.style.height = `${targetRect.height}px`;
+            flyer.style.opacity = '0.8';
+
+            flyer.addEventListener('transitionend', () => {
+                flyer.remove();
+                // Flash the target thumbnail to indicate arrival
+                targetEl.style.transition = 'filter 0.2s';
+                targetEl.style.filter = 'brightness(1.5)';
+                setTimeout(() => targetEl.style.filter = 'none', 200);
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('camera-lens').addEventListener('click', () => {
+            if (!isWebcamOn) {
+                toggleWebcam(); // Open camera modal
+            } else {
+                takeSnapshot(); // Take snapshot if camera is already on
+            }
+        });
+
+        closeModalBtn.addEventListener('click', closeWebcam);
+        captureBtn.addEventListener('click', takeSnapshot);
+        
+        // Close modal on outside click
+        cameraModal.addEventListener('click', (e) => {
+            if(e.target === cameraModal) closeWebcam();
+        });
+
+        // 移除原本的 selectImage 函数，逻辑已整合进 updateShutterState
+
+        shutterBtn.addEventListener('click', () => {
+            // Shutter button is strictly for printing selected images
+            if(!isReady || selectedImages.size === 0) { 
+                toolbar.style.transform = "translate(-50%, 5px)";
+                setTimeout(() => toolbar.style.transform = "translate(-50%, 0)", 200);
+                return;
+            }
+            
+            // Print all selected images
+            printBatch(Array.from(selectedImages));
+        });
+
+        const styleSelect = document.getElementById('style-select');
+        const stylePreview = document.getElementById('style-preview');
+        
+        // 自定义下拉菜单逻辑
+        const customSelect = document.getElementById('custom-select');
+        const customTrigger = customSelect.querySelector('.custom-select-trigger');
+        const currentText = document.getElementById('current-style-text');
+        const customOptions = document.getElementById('custom-options');
+
+        // 1. 初始化样式选择器：根据原生 Select 生成选项
+        Array.from(styleSelect.options).forEach(option => {
+            const div = document.createElement('div');
+            div.className = 'custom-option';
+            div.textContent = option.text;
+            div.dataset.value = option.value;
+            if(option.selected) div.classList.add('selected');
+            
+            // 点击选择
+            div.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止冒泡触发 document click
+                selectStyle(option.value, option.text);
+                customOptions.classList.remove('open');
+            });
+
+            // 悬浮预览 (Hover Preview)
+            div.addEventListener('mouseenter', () => {
+                updatePreview(option.value);
+            });
+
+            customOptions.appendChild(div);
+        });
+
+        // 2. 样式选择器交互事件
+        customTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            customOptions.classList.toggle('open');
+            // customFontOptions.classList.remove('open'); // Close font dropdown if open - Removed font
+        });
+
+        // 点击外部关闭所有自定义下拉菜单
+        document.addEventListener('click', (e) => {
+            if(!customSelect.contains(e.target)) {
+                customOptions.classList.remove('open');
+                updatePreview(styleSelect.value); // Reset style preview
+            }
+            // if(!customFontSelect.contains(e.target)) { // Removed font
+            //     customFontOptions.classList.remove('open');
+            // }
+        });
+
+        // 鼠标离开整个选项区域时，恢复当前选中的预览
+        customOptions.addEventListener('mouseleave', () => {
+            updatePreview(styleSelect.value);
+        });
+
+        function selectStyle(value, text) {
+            styleSelect.value = value;
+            currentText.innerText = text;
+            
+            // 更新选中状态 UI
+            const options = customOptions.querySelectorAll('.custom-option');
+            options.forEach(opt => {
+                if(opt.dataset.value === value) opt.classList.add('selected');
+                else opt.classList.remove('selected');
+            });
+
+            updatePreview(value);
+        }
+
+        // Removed selectFont function
+
+        // 初始化预览
+        selectStyle(styleSelect.value, currentText.innerText); // Call selectStyle to initialize properly
+        // selectFont(fontSelect.value, currentFontText.innerText); // Removed font
+
+        function updatePreview(type) {
+            const config = getStyleConfig(type, 'preview');
+            // 生成一个迷你的 SVG 预览
+            stylePreview.innerHTML = `
+                <svg width="100%" height="100%" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+                    <defs>${config.defs}</defs>
+                    <rect width="50" height="50" fill="${config.fill}" />
+                </svg>
+            `;
+        }
+
+        function getStyleConfig(type, uid) {
+            let defs = '';
+            let fill = '#fff';
+            let text = '#333';
+
+            switch (type) {
+                case 'dots':
+                    defs = `<pattern id="pat-${uid}" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <rect width="20" height="20" fill="#fff"/>
+                        <circle cx="10" cy="10" r="2.5" fill="#ff9f43" opacity="0.4"/>
+                        <circle cx="0" cy="0" r="2.5" fill="#ff9f43" opacity="0.4"/>
+                    </pattern>`;
+                    fill = `url(#pat-${uid})`;
+                    break;
+                case 'grid':
+                    defs = `<pattern id="pat-${uid}" width="25" height="25" patternUnits="userSpaceOnUse">
+                        <rect width="25" height="25" fill="#fff"/>
+                        <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#0984e3" stroke-width="1" opacity="0.15"/>
+                    </pattern>`;
+                    fill = `url(#pat-${uid})`;
+                    break;
+                case 'flowers':
+                    defs = `<pattern id="pat-${uid}" width="60" height="60" patternUnits="userSpaceOnUse">
+                        <rect width="60" height="60" fill="#fff5f5"/>
+                        <g transform="translate(30,30) rotate(15)">
+                            <circle r="6" fill="#e17055"/>
+                            <circle cy="-8" r="4" fill="#fab1a0"/>
+                            <circle cy="8" r="4" fill="#fab1a0"/>
+                            <circle cx="-8" r="4" fill="#fab1a0"/>
+                            <circle cx="8" r="4" fill="#fab1a0"/>
+                        </g>
+                    </pattern>`;
+                    fill = `url(#pat-${uid})`;
+                    break;
+                case 'gradient':
+                    defs = `<linearGradient id="pat-${uid}" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#fff" />
+                        <stop offset="100%" stop-color="#fdcb6e" />
+                    </linearGradient>`;
+                    fill = `url(#pat-${uid})`;
+                    break;
+                case 'black':
+                    fill = '#222';
+                    text = '#f1f1f1';
+                    break;
+                case 'kraft':
+                     defs = `<pattern id="pat-${uid}" width="4" height="4" patternUnits="userSpaceOnUse">
+                        <rect width="4" height="4" fill="#e0d4b8"/>
+                        <rect width="1" height="1" fill="#cbbfa0"/>
+                    </pattern>`;
+                    fill = `url(#pat-${uid})`;
+                    break;
+                case 'hearts':
+                    defs = `<pattern id="pat-${uid}" width="30" height="30" patternUnits="userSpaceOnUse">
+                        <rect width="30" height="30" fill="#ffeaa7" opacity="0.2"/>
+                        <rect width="30" height="30" fill="#fff"/>
+                        <text x="15" y="20" font-size="14" fill="#ff7675" text-anchor="middle" style="font-family:Arial">♥</text>
+                    </pattern>`;
+                    fill = `url(#pat-${uid})`;
+                    break;
+                case 'stars':
+                    defs = `<pattern id="pat-${uid}" width="50" height="50" patternUnits="userSpaceOnUse">
+                        <rect width="50" height="50" fill="#2c3e50"/>
+                        <circle cx="25" cy="25" r="1.5" fill="#fff" opacity="0.8"/>
+                        <circle cx="10" cy="10" r="1" fill="#fff" opacity="0.5"/>
+                        <circle cx="40" cy="40" r="1" fill="#fff" opacity="0.5"/>
+                    </pattern>`;
+                    fill = `url(#pat-${uid})`;
+                    text = '#fff';
+                    break;
+                default: // 'white'
+                    // default values are already set
+            }
+            return { defs, fill, text };
+        }
+
+        function createPolaroid(imgSrc, textContent, imgWidth, imgHeight) {
+            const uid = Date.now() + Math.random().toString(36).substr(2, 5);
+            const styleType = styleSelect.value;
+            const div = document.createElement('div');
+            const randomAngle = (Math.random() - 0.5) * 12; 
+            
+            const config = getStyleConfig(styleType, uid);
+
+            // 动态计算尺寸
+            const maxImageWidth = 300; // Max width for the image part in SVG units
+            let imageSvgWidth = maxImageWidth;
+            let imageSvgHeight = (imgHeight / imgWidth) * imageSvgWidth;
+
+            // 如果图片是细长条，限制其高度，以防相框过高
+            const maxImageSvgHeight = 400; // Max height for the image part in SVG units
+            if (imageSvgHeight > maxImageSvgHeight) {
+                imageSvgHeight = maxImageSvgHeight;
+                imageSvgWidth = (imgWidth / imgHeight) * imageSvgHeight;
+            }
+
+            const framePaddingX = 25; // Left, Right padding for the white frame
+            const framePaddingYTop = 25; // Top padding for the white frame
+            const framePaddingYBottom = 100; // Bottom padding for text area
+
+            const frameSvgWidth = imageSvgWidth + (framePaddingX * 2);
+            const frameSvgHeight = imageSvgHeight + framePaddingYTop + framePaddingYBottom;
+
+            // 文本的 Y 坐标
+            const textSvgY = imageSvgHeight + framePaddingYTop + (framePaddingYBottom * 0.7);
+
+            div.style.setProperty('--random-rotate', `${randomAngle}deg`);
+            div.className = 'polaroid-item ejecting';
+            
+            // 设置 polaroid-item 的实际渲染尺寸
+            // 假设默认相框 350 SVG单位 对应 330px
+            const renderScaleFactor = 330 / 350; 
+            div.style.width = `${frameSvgWidth * renderScaleFactor}px`;
+            div.style.height = `${frameSvgHeight * renderScaleFactor}px`;
+            div.style.marginLeft = `${-(frameSvgWidth * renderScaleFactor) / 2}px`;
+            div.style.top = `${410 - (frameSvgHeight * renderScaleFactor / 2) + (495 * renderScaleFactor / 2)}px`; // Adjust initial top for vertical centering based on new height
+
+            div.innerHTML = `
+                <div class="delete-btn" title="删除">✕</div>
+                <svg viewBox="0 0 ${frameSvgWidth} ${frameSvgHeight}" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="display:block; filter: drop-shadow(0 4px 20px rgba(0,0,0,0.15));">
+                    <defs>
+                        <clipPath id="clip-${uid}">
+                            <rect x="${framePaddingX}" y="${framePaddingYTop}" width="${imageSvgWidth}" height="${imageSvgHeight}" rx="2"/>
+                        </clipPath>
+                        <filter id="paper-${uid}">
+                            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise"/>
+                            <feDiffuseLighting in="noise" lighting-color="#fff" surfaceScale="1">
+                                <feDistantLight azimuth="45" elevation="60"/>
+                            </feDiffuseLighting>
+                        </filter>
+                        
+                        <!-- Polaroid Color Filter -->
+                        <filter id="pola-${uid}">
+                            <feColorMatrix type="matrix" values="
+                                1.1 0   0   0   -0.02
+                                0   1.05 0  0   -0.02
+                                0   0   0.9 0   0.03
+                                0   0   0   1   0
+                            "/>
+                        </filter>
+                        
+                        <!-- Vignette Gradient -->
+                        <radialGradient id="vig-${uid}" cx="50%" cy="50%" r="70%" fx="50%" fy="50%">
+                            <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+                            <stop offset="100%" stop-color="#000" stop-opacity="0.4"/>
+                        </radialGradient>
+
+                        ${config.defs}
+                    </defs>
+                    <rect width="${frameSvgWidth}" height="${frameSvgHeight}" fill="${config.fill}"/>
+                    <rect width="${frameSvgWidth}" height="${frameSvgHeight}" fill="#f8f8f8" opacity="0.2" filter="url(#paper-${uid})"/>
+                    <rect x="${framePaddingX}" y="${framePaddingYTop}" width="${imageSvgWidth}" height="${imageSvgHeight}" fill="#111"/>
+                    
+                    <!-- Image with Filter -->
+                    <image x="${framePaddingX}" y="${framePaddingYTop}" width="${imageSvgWidth}" height="${imageSvgHeight}" 
+                           href="${imgSrc}" preserveAspectRatio="xMidYMid slice" 
+                           clip-path="url(#clip-${uid})"
+                           filter="url(#pola-${uid})"/>
+                    
+                    <!-- Vignette Overlay -->
+                    <rect x="${framePaddingX}" y="${framePaddingYTop}" width="${imageSvgWidth}" height="${imageSvgHeight}" 
+                          fill="url(#vig-${uid})" clip-path="url(#clip-${uid})" style="mix-blend-mode: multiply; pointer-events: none;"/>
+
+                    <rect class="dev-overlay" x="${framePaddingX}" y="${framePaddingYTop}" width="${imageSvgWidth}" height="${imageSvgHeight}" fill="#050505" />
+                    <text x="${frameSvgWidth / 2}" y="${textSvgY}" text-anchor="middle" font-family="'Caveat', cursive" font-size="36" fill="${config.text}">${textContent}</text>
+                </svg>
+            `;
+
+            workspace.appendChild(div);
+
+            setTimeout(() => {
+                div.classList.add('developed');
+                div.classList.remove('ejecting');
+                // 最终位置的 top 值需要重新计算以适应动态高度
+                div.style.top = `${640 - (frameSvgHeight * renderScaleFactor / 2) + (495 * renderScaleFactor / 2)}px`; // Adjust final top
+                div.style.transform = `rotate(${randomAngle}deg)`; 
+            }, 1400);
+
+            makeDraggable(div);
+
+            div.querySelector('.delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                div.remove();
+            });
+            div.addEventListener('dblclick', () => downloadSingle(div, frameSvgWidth, frameSvgHeight));
+        }
+
+        function makeDraggable(el) {
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+            el.addEventListener('mousedown', (e) => {
+                if(e.target.classList.contains('delete-btn')) return;
+                isDragging = true;
+                document.querySelectorAll('.polaroid-item').forEach(item => item.style.zIndex = '500');
+                el.style.zIndex = '600';
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = el.offsetLeft;
+                initialTop = el.offsetTop;
+                el.style.cursor = 'grabbing';
+                el.style.transition = 'none'; 
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                el.style.left = `${initialLeft + dx}px`;
+                el.style.top = `${initialTop + dy}px`;
+                el.style.marginLeft = '0'; 
+            });
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    el.style.cursor = 'grab';
+                    el.style.transition = 'box-shadow 0.3s';
+                }
+            });
+        }
+
+        // --- 核心修复：单张下载逻辑 ---
+        function downloadSingle(el, finalFrameSvgWidth, finalFrameSvgHeight) {
+            const svgEl = el.querySelector('svg');
+            
+            // 1. 克隆节点，避免修改原图 DOM
+            const clonedSvg = svgEl.cloneNode(true);
+            
+            // 2. 确保导出的图片是显影完全的（透明度0）
+            const overlay = clonedSvg.querySelector('.dev-overlay');
+            overlay.style.opacity = '0'; 
+
+            // 3. 【关键修复】给克隆的 SVG 强制设置具体的宽高
+            clonedSvg.setAttribute('width', finalFrameSvgWidth);
+            clonedSvg.setAttribute('height', finalFrameSvgHeight);
+
+            // 4. 序列化
+            const xml = new XMLSerializer().serializeToString(clonedSvg);
+            const img = new Image();
+            const svgBlob = new Blob([xml], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // 2倍高清导出
+                canvas.width = finalFrameSvgWidth * 2;
+                canvas.height = finalFrameSvgHeight * 2;
+                const ctx = canvas.getContext('2d');
+                
+                // 显式指定绘制尺寸，填满 Canvas
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = `Polaroid_${Date.now()}.png`;
+                link.click();
+                
+                URL.revokeObjectURL(url);
+            };
+            img.src = url;
+        }
+    </script>
+</body>
+</html>
