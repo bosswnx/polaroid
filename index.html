@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polaroid Final Fixed</title>
+    <!-- 样式库 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- 站点样式 -->
+    <link rel="stylesheet" href="./style.css">
+    <!-- 引入 html2canvas 用于屏幕截图 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+    <div class="flash" id="flash"></div>
+
+    <div class="toolbar" id="toolbar">
+        <button class="icon-btn" onclick="document.getElementById('file-input').click()">
+            <i class="fas fa-images"></i>
+            <span id="upload-status">添加照片</span>
+        </button>
+        <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
+        
+        <!-- 隐藏原生 Select -->
+        <select id="style-select" style="display: none;">
+            <option value="white">经典白</option>
+            <option value="dots">可爱波点</option>
+            <option value="grid">简约方格</option>
+            <option value="flowers">复古碎花</option>
+            <option value="gradient">落日渐变</option>
+            <option value="black">酷黑</option>
+            <option value="kraft">复古牛皮</option>
+            <option value="hearts">爱心发射</option>
+            <option value="stars">梦幻星空</option>
+            <option value="candy">糖果甜心</option>
+            <option value="ocean">蔚蓝海洋</option>
+            <option value="mint">清新薄荷</option>
+            <option value="sunset">日落大道</option>
+            <option value="marble">大理石纹</option>
+            <option value="holo">流光溢彩</option>
+            <option value="sakura">浪漫樱花</option>
+            <option value="cyber">赛博朋克</option>
+            <option value="wood">复古木纹</option>
+            <option value="lemon">清爽柠檬</option>
+            <option value="rainbow">彩虹糖果</option>
+            <!-- Removed 'custom' option from here, handled dynamically -->
+        </select>
+
+        <input type="file" id="texture-input" accept="image/*" style="display: none;">
+
+        <div class="divider"></div>
+
+        <!-- 自定义下拉菜单容器 -->
+        <div class="custom-select-container" id="custom-select">
+            <div class="custom-select-trigger" title="选择样式">
+                <div id="style-preview" class="style-preview"></div>
+            </div>
+            <div class="custom-options" id="custom-options">
+                <!-- 选项由 JS 生成 -->
+            </div>
+        </div>
+
+        <div class="divider"></div>
+        <input type="text" id="text-input" placeholder="输入文字..." maxlength="12" autocomplete="off">
+        <input type="color" id="text-color-picker" value="#333333" title="文字颜色">
+
+        <div class="divider"></div>
+        <button class="icon-btn" id="save-desk-btn" title="保存整个桌面截图">
+            <i class="fas fa-camera"></i>
+            <span>保存桌面</span>
+        </button>
+    </div>
+
+    <div id="workspace">
+        <!-- Camera Modal -->
+        <div id="camera-modal" class="camera-modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span>拍摄照片</span>
+                    <button class="close-modal-btn" id="close-modal-btn">&times;</button>
+                </div>
+                <div class="video-wrapper">
+                    <video id="webcam-feed" autoplay playsinline></video>
+                </div>
+                <button id="capture-btn" class="capture-btn">
+                    <div class="capture-inner"></div>
+                </button>
+            </div>
+        </div>
+        
+        <canvas id="snapshot-canvas" style="display:none;"></canvas>
+        <div class="camera-container">
+            <svg width="500" height="375" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="40" width="300" height="200" rx="24" fill="#f2f2f2"/>
+                <rect x="10" y="40" width="300" height="190" rx="24" fill="#fff"/>
+                <rect x="10" y="220" width="300" height="20" rx="10" fill="#e0e0e0" style="mix-blend-mode: multiply;"/>
+                <rect x="135" y="40" width="10" height="200" fill="#FF9F43"/>
+                <rect x="145" y="40" width="10" height="200" fill="#EE5253"/>
+                <rect x="155" y="40" width="10" height="200" fill="#0ABDE3"/>
+                <g id="camera-lens" style="cursor: pointer">
+                    <circle cx="160" cy="130" r="75" fill="#e5e5e5" stroke="#ddd"/>
+                    <circle cx="160" cy="130" r="60" fill="#2d3436"/>
+                    <circle cx="160" cy="130" r="50" fill="#000"/>
+                    <circle cx="160" cy="130" r="20" fill="#2d3436" stroke="#444" stroke-width="2"/>
+                    <circle cx="150" cy="120" r="6" fill="white" opacity="0.3"/>
+                </g>
+                <rect x="230" y="65" width="60" height="40" rx="4" fill="#636e72"/>
+                <rect x="234" y="69" width="52" height="32" rx="2" fill="#dfe6e9" opacity="0.9"/>
+                <rect x="30" y="65" width="60" height="40" rx="4" fill="#2d3436"/>
+                <rect x="35" y="70" width="50" height="30" rx="2" fill="#000"/>
+                <g id="shutter-btn" class="shutter-btn" style="opacity: 0.6; cursor: not-allowed;">
+                    <circle cx="270" cy="160" r="24" fill="#c0392b"/>
+                    <circle cx="270" cy="160" r="20" fill="#ff4757" />
+                    <circle cx="270" cy="160" r="35" fill="transparent"/>
+                </g>
+                <rect x="35" y="228" width="250" height="12" rx="2" fill="#2d3436"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="tip">点击镜头拍照 · 点击红色按钮生成照片 · 双击照片下载 · 自由拖拽整理 · 点击“保存桌面”导出全图</div>
+
+    <!-- 缩略图栏 -->
+    <div id="thumbnail-bar" class="thumbnail-bar"></div>
+
+    <!-- 版权声明 -->
+    <div class="footer-copyright">
+        &copy; 2025-<span id="current-year"></span> <a href="https://bosswnx.xyz" target="_blank">Nelson Boss</a>. All Rights Reserved.
+    </div>
+
+    <!-- 站点脚本 -->
+    <script src="./script.js"></script>
+</body>
+</html>
