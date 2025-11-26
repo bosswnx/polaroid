@@ -74,22 +74,23 @@
         </button>
     </div>
 
-    <div id="workspace">
-        <!-- Camera Modal -->
-        <div id="camera-modal" class="camera-modal" style="display:none;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <span>拍摄照片</span>
-                    <button class="close-modal-btn" id="close-modal-btn">&times;</button>
-                </div>
-                <div class="video-wrapper">
-                    <video id="webcam-feed" autoplay playsinline></video>
-                </div>
-                <button id="capture-btn" class="capture-btn">
-                    <div class="capture-inner"></div>
-                </button>
+    <!-- Camera Modal -->
+    <div id="camera-modal" class="camera-modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>拍摄照片</span>
+                <button class="close-modal-btn" id="close-modal-btn">&times;</button>
             </div>
+            <div class="video-wrapper">
+                <video id="webcam-feed" autoplay playsinline></video>
+            </div>
+            <button id="capture-btn" class="capture-btn">
+                <div class="capture-inner"></div>
+            </button>
         </div>
+    </div>
+
+    <div id="workspace">
         
         <canvas id="snapshot-canvas" style="display:none;"></canvas>
         <div class="camera-container">
@@ -126,10 +127,31 @@
     <!-- 缩略图栏 -->
     <div id="thumbnail-bar" class="thumbnail-bar"></div>
 
+    <!-- 右下角控制区 -->
+    <div class="controls-wrapper">
+        <!-- 摇杆控制 -->
+        <div class="joystick-container" id="joystick-container">
+            <div class="joystick-arrow up"><i class="fas fa-chevron-up"></i></div>
+            <div class="joystick-arrow down"><i class="fas fa-chevron-down"></i></div>
+            <div class="joystick-arrow left"><i class="fas fa-chevron-left"></i></div>
+            <div class="joystick-arrow right"><i class="fas fa-chevron-right"></i></div>
+            <div class="joystick-knob" id="joystick-knob"></div>
+        </div>
+
+        <!-- 缩放控制 -->
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoom-out" title="缩小">
+                <i class="fas fa-minus"></i>
+            </button>
+            <div class="zoom-level" id="zoom-level">100%</div>
+            <button class="zoom-btn" id="zoom-in" title="放大">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- 版权声明 -->
     <div class="footer-copyright">
-        &copy; 2025-<span id="current-year"></span> <a href="https://bosswnx.xyz" target="_blank">Nelson Boss</a>. All Rights Reserved.
-    </div>
 
     <!-- 站点脚本 -->
     <script src="./script.js"></script>

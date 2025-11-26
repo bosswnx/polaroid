@@ -2,6 +2,8 @@ let currentImageBase64 = null;
 let currentImageDimensions = { width: 0, height: 0 };
 let isReady = false;
 let globalZIndex = 500;
+let currentZoom = 1.0;
+let currentPan = { x: 0, y: 0 };
 
 const workspace = document.getElementById('workspace');
 const shutterBtn = document.getElementById('shutter-btn');
@@ -929,8 +931,10 @@ function makeDraggable(el) {
     window.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
         e.preventDefault();
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
+        
+        // Adjust delta by currentZoom to keep mouse tracking accurate
+        const dx = (e.clientX - startX) / currentZoom;
+        const dy = (e.clientY - startY) / currentZoom;
         
         if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
             hasMoved = true;
@@ -1110,3 +1114,139 @@ saveDeskBtn.addEventListener('click', () => {
         });
     }, 100);
 });
+
+const zoomInBtn = document.getElementById('zoom-in');
+const zoomOutBtn = document.getElementById('zoom-out');
+const zoomLevelDisplay = document.getElementById('zoom-level');
+
+function updateWorkspaceTransform() {
+    workspace.style.transform = `translate(${currentPan.x}px, ${currentPan.y}px) scale(${currentZoom})`;
+}
+
+function updateZoom(newZoom) {
+    // Clamp zoom level between 0.2 and 3.0
+    if (newZoom < 0.2) newZoom = 0.2;
+    if (newZoom > 3.0) newZoom = 3.0;
+    
+    // Round to 1 decimal place to avoid floating point errors
+    newZoom = Math.round(newZoom * 10) / 10;
+
+    currentZoom = newZoom;
+    zoomLevelDisplay.textContent = Math.round(currentZoom * 100) + '%';
+    updateWorkspaceTransform();
+}
+
+if (zoomInBtn && zoomOutBtn) {
+    zoomInBtn.addEventListener('click', () => updateZoom(currentZoom + 0.1));
+    zoomOutBtn.addEventListener('click', () => updateZoom(currentZoom - 0.1));
+}
+
+// Joystick Logic
+const joystickContainer = document.getElementById('joystick-container');
+const joystickKnob = document.getElementById('joystick-knob');
+let joystickActive = false;
+let joystickData = { x: 0, y: 0 };
+let touchStartPos = { x: 0, y: 0 };
+const maxRadius = 20; // 40 (container radius) - 20 (knob radius)
+
+if(joystickContainer && joystickKnob) {
+    const startJoystick = (e) => {
+        joystickActive = true;
+        joystickContainer.style.opacity = '1';
+        
+        // Record start position for relative movement
+        touchStartPos = {
+            x: e.touches ? e.touches[0].clientX : e.clientX,
+            y: e.touches ? e.touches[0].clientY : e.clientY
+        };
+    };
+
+    const moveJoystick = (e) => {
+        if (!joystickActive) return;
+        
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // Calculate delta from initial touch
+        const dx = clientX - touchStartPos.x;
+        const dy = clientY - touchStartPos.y;
+        
+        const distance = Math.sqrt(dx*dx + dy*dy);
+        const angle = Math.atan2(dy, dx);
+        
+        // Clamp to max radius
+        const clampedDist = Math.min(distance, maxRadius);
+        
+        const knobX = Math.cos(angle) * clampedDist;
+        const knobY = Math.sin(angle) * clampedDist;
+        
+        // Update knob position (relative to center)
+        joystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+        
+        // Normalize vector (-1 to 1)
+        joystickData = {
+            x: knobX / maxRadius,
+            y: knobY / maxRadius
+        };
+    };
+
+    const endJoystick = () => {
+        joystickActive = false;
+        joystickContainer.style.opacity = ''; 
+        joystickKnob.style.transform = 'translate(-50%, -50%)';
+        joystickData = { x: 0, y: 0 };
+    };
+
+    joystickContainer.addEventListener('mousedown', startJoystick);
+    joystickContainer.addEventListener('touchstart', (e) => { e.preventDefault(); startJoystick(e); }, { passive: false });
+    
+    window.addEventListener('mousemove', moveJoystick);
+    window.addEventListener('touchmove', (e) => { if(joystickActive) e.preventDefault(); moveJoystick(e); }, { passive: false });
+    
+    window.addEventListener('mouseup', endJoystick);
+    window.addEventListener('touchend', endJoystick);
+    
+    // Animation Loop for Movement
+    function gameLoop() {
+        if (joystickActive || joystickData.x !== 0 || joystickData.y !== 0) {
+            // Movement speed: 10 pixels per frame at max tilt
+            // Divide by currentZoom to make movement feel consistent regardless of zoom level
+            // Actually, if we move the workspace, we probably want constant screen speed?
+            // If we translate workspace by 10px:
+            // At zoom 1, it moves 10px on screen.
+            // At zoom 0.5, it moves 10px on screen (because translate is applied before or after?)
+            // CSS: transform: translate(...) scale(...)
+            // Translate moves the element, THEN scale scales it.
+            // So if I translate 100px, then scale 0.5. The visual movement is 100 * 0.5 = 50px.
+            // So to get consistent screen movement speed, we need to divide by zoom? No, multiply?
+            // If I want 10px screen movement:
+            // visual_delta = real_delta * zoom
+            // 10 = real_delta * zoom => real_delta = 10 / zoom.
+            // So yes, divide by zoom.
+            
+            const baseSpeed = 10;
+            // const speed = baseSpeed / currentZoom; // Previous logic caused speed variance
+            
+            // User requested consistent speed regardless of zoom.
+            // Using constant world speed means moving joystick moves workspace by fixed X pixels.
+            // This means visual speed will vary (faster when zoomed in, slower when zoomed out).
+            // However, user specifically said "When shrinking (zooming out), movement becomes fast".
+            // The previous formula (10 / zoom) meant when zoom=0.2, speed=50.
+            // This was causing the "too fast" behavior when zoomed out.
+            
+            // Let's try constant speed, or maybe just less compensation.
+            // If we use just `baseSpeed`, when zoom=0.2, visual speed = 10 * 0.2 = 2px/frame (very slow).
+            // When zoom=1.0, visual speed = 10px/frame.
+            
+            // Maybe the user means consistent *world* speed?
+            const speed = baseSpeed; 
+            
+            currentPan.x -= joystickData.x * speed;
+            currentPan.y -= joystickData.y * speed;
+            
+            updateWorkspaceTransform();
+        }
+        requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+}

@@ -152,6 +152,7 @@ input[type="text"]:focus { border-bottom-color: var(--accent-color); }
 /* 颜色选择器样式 */
 input[type="color"] {
     -webkit-appearance: none;
+    appearance: none;
     border: none;
     width: 28px;
     height: 28px;
@@ -178,6 +179,8 @@ input[type="color"]:hover {
     position: relative;
     width: 100%;
     height: 100%;
+    transform-origin: center center;
+    transition: transform 0.2s ease-out;
 }
 
 .camera-container {
@@ -272,9 +275,10 @@ input[type="color"]:hover {
 body.capturing .toolbar,
 body.capturing .delete-btn,
 body.capturing .tip,
-body.capturing .footer-copyright {
-    display: none !important;
-}
+    body.capturing .footer-copyright,
+    body.capturing .controls-wrapper {
+        display: none !important;
+    }
 
 .flash {
     position: fixed;
@@ -530,4 +534,114 @@ body.capturing .footer-copyright {
 .footer-copyright a:hover {
     color: var(--accent-color);
     text-decoration: underline;
+}
+
+/* Controls Wrapper */
+.controls-wrapper {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    z-index: 10000;
+    pointer-events: none; /* Let clicks pass through around the items */
+}
+
+.controls-wrapper > * {
+    pointer-events: auto; /* Re-enable clicks */
+}
+
+/* Joystick Controls */
+.joystick-container {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s;
+    position: relative;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    padding: 8px 16px;
+    border-radius: 50px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    min-width: 136px; /* Ensure consistent width for alignment */
+    justify-content: center;
+}
+
+.zoom-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: #555;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+    font-size: 14px;
+}
+
+.zoom-btn:hover {
+    background: rgba(0,0,0,0.05);
+    color: #000;
+    transform: scale(1.1);
+}
+
+.zoom-btn:active {
+    transform: scale(0.95);
+}
+
+.zoom-level {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    min-width: 45px;
+    text-align: center;
+    user-select: none;
+}
+
+.joystick-arrow {
+    position: absolute;
+    color: rgba(0, 0, 0, 0.3);
+    font-size: 10px;
+    pointer-events: none;
+}
+
+.joystick-arrow.up { top: 4px; left: 50%; transform: translateX(-50%); }
+.joystick-arrow.down { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.joystick-arrow.left { left: 4px; top: 50%; transform: translateY(-50%); }
+.joystick-arrow.right { right: 4px; top: 50%; transform: translateY(-50%); }
+
+.joystick-knob {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 71, 87, 0.9); /* Accent color */
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    position: absolute; 
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; /* Let container handle events */
+    transition: transform 0.1s;
 }
