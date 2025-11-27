@@ -472,10 +472,12 @@ body.capturing .tip,
 .video-wrapper {
     width: 100%;
     aspect-ratio: 4/3;
+    max-height: 55vh;
     background: #000;
     border-radius: 12px;
     overflow: hidden;
     position: relative;
+    margin: 0 auto;
 }
 
 #webcam-feed {
@@ -483,6 +485,35 @@ body.capturing .tip,
     height: 100%;
     object-fit: cover;
     transform: scaleX(-1);
+}
+
+/* Aspect Ratio Selector */
+.ratio-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: -10px;
+}
+
+.ratio-btn {
+    background: #f0f2f5;
+    border: 1px solid #ccc;
+    border-radius: 16px;
+    padding: 6px 16px;
+    font-size: 14px;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ratio-btn:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.ratio-btn.active {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
 }
 
 .capture-btn {
@@ -653,9 +684,14 @@ body.capturing .tip,
         max-width: 90%;
         padding: 10px;
         flex-wrap: wrap;
-        justify-content: space-between;
+        justify-content: center;
         gap: 10px;
         border-radius: 20px;
+    }
+
+    /* 调整相机位置，避免与底部重叠 */
+    .camera-container {
+        top: 80px;
     }
 
     .toolbar .divider {
@@ -677,7 +713,7 @@ body.capturing .tip,
     
     .thumbnail-bar {
         top: auto;
-        bottom: 120px;
+        bottom: 90px;
         max-width: 95vw;
         padding: 8px;
         background: rgba(255, 255, 255, 0.8);
@@ -692,7 +728,7 @@ body.capturing .tip,
     }
     
     .tip {
-        bottom: 70px;
+        bottom: 50px;
         width: 90%;
         font-size: 12px;
     }

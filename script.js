@@ -154,6 +154,23 @@ const closeModalBtn = document.getElementById('close-modal-btn');
 const captureBtn = document.getElementById('capture-btn');
 
 let cameraStream = null;
+let currentAspectRatio = '4:3';
+
+const ratioBtns = document.querySelectorAll('.ratio-btn');
+const videoWrapper = document.querySelector('.video-wrapper');
+
+ratioBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        ratioBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        currentAspectRatio = btn.dataset.ratio;
+        
+        if(videoWrapper) {
+             videoWrapper.style.aspectRatio = currentAspectRatio.replace(':', '/');
+        }
+    });
+});
 
 async function toggleWebcam() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -197,20 +214,49 @@ function takeSnapshot() {
         return;
     }
 
-    canvasElement.width = videoElement.videoWidth;
-    canvasElement.height = videoElement.videoHeight;
+    const videoWidth = videoElement.videoWidth;
+    const videoHeight = videoElement.videoHeight;
+    const videoRatio = videoWidth / videoHeight;
+    
+    let targetRatio = 4/3; 
+    const [w, h] = currentAspectRatio.split(':').map(Number);
+    targetRatio = w / h;
+
+    let cropWidth = videoWidth;
+    let cropHeight = videoHeight;
+    let cropX = 0;
+    let cropY = 0;
+
+    // Calculate crop dimensions to fit target aspect ratio into video
+    if (videoRatio > targetRatio) {
+        // Source is wider than target, crop width (vertical bars needed if we were fitting, but we are cropping)
+        // We want to fill the target ratio, so we crop the excess width.
+        cropWidth = videoHeight * targetRatio;
+        cropX = (videoWidth - cropWidth) / 2;
+    } else {
+        // Source is taller than target, crop height
+        cropHeight = videoWidth / targetRatio;
+        cropY = (videoHeight - cropHeight) / 2;
+    }
+
+    canvasElement.width = cropWidth;
+    canvasElement.height = cropHeight;
     
     canvasContext.save();
     canvasContext.scale(-1, 1);
-    canvasContext.drawImage(videoElement, -canvasElement.width, 0, canvasElement.width, canvasElement.height);
+    
+    // drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+    // dx is -cropWidth because of horizontal flip
+    canvasContext.drawImage(videoElement, cropX, cropY, cropWidth, cropHeight, -cropWidth, 0, cropWidth, cropHeight);
+    
     canvasContext.restore();
 
     const capturedBase64 = canvasElement.toDataURL('image/png');
     
     const imgData = {
         base64: capturedBase64,
-        width: videoElement.videoWidth,
-        height: videoElement.videoHeight,
+        width: cropWidth,
+        height: cropHeight,
         id: Date.now() + Math.random()
     };
 
