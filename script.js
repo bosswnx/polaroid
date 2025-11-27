@@ -499,22 +499,6 @@ textColorPicker.addEventListener('input', (e) => {
     textInput.style.color = newColor;
 });
 
-    // Initialize
-    selectStyle(styleSelect.value || 'white'); // Default to white if nothing selected
-    
-    // Set current year in copyright
-    const yearEl = document.getElementById('current-year');
-    if(yearEl) {
-        const currentYear = new Date().getFullYear();
-        // 如果当前年份就是 2025，只显示 2025；否则显示 2025-当前年份
-        if (currentYear > 2025) {
-            yearEl.textContent = '-' + currentYear;
-        } else {
-            yearEl.textContent = ''; // 保持为空，前面的 2025 已经有了
-        }
-    }
-
-    updatePreview(styleSelect.value || 'white');
 
 
 function updatePreview(type) {
@@ -912,29 +896,26 @@ function makeDraggable(el) {
     let startX, startY, initialLeft, initialTop;
     let hasMoved = false;
 
-    el.addEventListener('mousedown', (e) => {
+    // 通用开始拖动处理
+    const startDrag = (clientX, clientY) => {
         hasMoved = false;
-        if(e.target.classList.contains('delete-btn')) return;
         isDragging = true;
         
-        // Increment global z-index and apply to current element
         globalZIndex++;
         el.style.zIndex = globalZIndex;
         
-        startX = e.clientX;
-        startY = e.clientY;
+        startX = clientX;
+        startY = clientY;
         initialLeft = el.offsetLeft;
         initialTop = el.offsetTop;
         el.style.cursor = 'grabbing';
-        el.style.transition = 'none'; 
-    });
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        
-        // Adjust delta by currentZoom to keep mouse tracking accurate
-        const dx = (e.clientX - startX) / currentZoom;
-        const dy = (e.clientY - startY) / currentZoom;
+        el.style.transition = 'none';
+    };
+
+    // 通用移动处理
+    const moveDrag = (clientX, clientY) => {
+        const dx = (clientX - startX) / currentZoom;
+        const dy = (clientY - startY) / currentZoom;
         
         if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
             hasMoved = true;
@@ -942,23 +923,54 @@ function makeDraggable(el) {
 
         el.style.left = `${initialLeft + dx}px`;
         el.style.top = `${initialTop + dy}px`;
-        el.style.marginLeft = '0'; 
-    });
-    window.addEventListener('mouseup', () => {
+        el.style.marginLeft = '0';
+    };
+
+    // 通用结束处理
+    const endDrag = () => {
         if (isDragging) {
             isDragging = false;
             el.style.cursor = 'grab';
             el.style.transition = 'box-shadow 0.3s';
         }
+    };
+
+    // Mouse Events
+    el.addEventListener('mousedown', (e) => {
+        if(e.target.classList.contains('delete-btn')) return;
+        startDrag(e.clientX, e.clientY);
     });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        moveDrag(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('mouseup', endDrag);
+
+    // Touch Events
+    el.addEventListener('touchstart', (e) => {
+        if(e.target.classList.contains('delete-btn')) return;
+        const touch = e.touches[0];
+        startDrag(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault(); // 阻止默认滚动行为
+        const touch = e.touches[0];
+        moveDrag(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    window.addEventListener('touchend', endDrag);
     
     // Prevent click events on children if dragged
     el.addEventListener('click', (e) => {
         if (hasMoved) {
             e.stopPropagation(); 
-            // Don't preventDefault() if it blocks necessary native behavior, but for custom clicks it helps
         }
-    }, true); // Capture phase might be better
+    }, true); 
 }
 
 function downloadSingle(el, finalFrameSvgWidth, finalFrameSvgHeight) {
@@ -1250,3 +1262,28 @@ if(joystickContainer && joystickKnob) {
     }
     gameLoop();
 }
+
+// Initialize
+selectStyle(styleSelect.value || 'white'); // Default to white if nothing selected
+
+// 初始自适应：如果屏幕宽度小于相机宽度，自动计算缩放比例
+const cameraFullWidth = 540; // 500px 相机宽度 + 左右余量
+if (window.innerWidth < cameraFullWidth) {
+    // 留出约 30px 的屏幕边距
+    const fitScale = (window.innerWidth - 30) / cameraFullWidth;
+    updateZoom(fitScale);
+}
+
+// Set current year in copyright
+const yearEl = document.getElementById('current-year');
+if(yearEl) {
+    const currentYear = new Date().getFullYear();
+    // 如果当前年份就是 2025，只显示 2025；否则显示 2025-当前年份
+    if (currentYear > 2025) {
+        yearEl.textContent = '-' + currentYear;
+    } else {
+        yearEl.textContent = ''; // 保持为空，前面的 2025 已经有了
+    }
+}
+
+updatePreview(styleSelect.value || 'white');
